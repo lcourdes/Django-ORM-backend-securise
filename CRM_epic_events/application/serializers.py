@@ -1,7 +1,7 @@
 from rest_framework.serializers import ModelSerializer
 from django.db import transaction
 from django.core.exceptions import ValidationError
-from application.models import Client, Contract
+from application.models import Client, Contract, Event
 from django.contrib.auth import authenticate
 from rest_framework import serializers
 
@@ -118,5 +118,43 @@ class ContractDetailSerializer(ModelSerializer):
             instance.amount = validated_data.get('amount')
         if validated_data.get('payment_due'):
             instance.payment_due = validated_data.get('payment_due')
+        instance.save()
+        return instance
+
+
+class EventSerializer(ModelSerializer):
+    class Meta:
+        model = Event
+        fields = ['id', 'client', 'event_status', 'support_contact', 'attendees',
+                  'event_date']
+
+
+class EventDetailSerializer(ModelSerializer):
+    class Meta:
+        model = Event
+        read_only_fields = ['client']
+        fields = ['id', 'event_status', 'support_contact', 'attendees',
+                  'event_date', 'notes', 'date_created', 'date_updated']
+
+    @transaction.atomic
+    def create(self, data, *args, **kwargs):
+        contract = Contract.objects.get(id=data.get('event_status').id)
+        client = contract.client
+        event = Event.objects.create(**data, client=client)
+        event.save()
+        return event
+    
+    @transaction.atomic
+    def update(self, instance, validated_data):
+        if validated_data.get('client'):
+            instance.client = validated_data.get('client')
+        if validated_data.get('event_status'):
+            instance.event_status = validated_data.get('event_status')
+        if validated_data.get('attendees'):
+            instance.attendees = validated_data.get('attendees')
+        if validated_data.get('event_date'):
+            instance.event_date = validated_data.get('event_date')
+        if validated_data.get('notes'):
+            instance.notes = validated_data.get('notes')
         instance.save()
         return instance
