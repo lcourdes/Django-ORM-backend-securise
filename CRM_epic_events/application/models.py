@@ -35,4 +35,20 @@ class Contract(models.Model):
     payment_due = models.DateTimeField(blank=True, null=True)
     date_created = models.DateTimeField(auto_now_add=True)
     date_updated = models.DateTimeField(auto_now=True)
-    
+
+def limit_users_support_contact():
+        all_support_contacts = models.Q(groups__name='supporters')
+        return all_support_contacts
+
+class Event(models.Model):
+    client = models.ForeignKey(Client, on_delete=models.CASCADE,
+                               limit_choices_to={'is_client': 'True'})
+    event_status = models.ForeignKey(Contract, on_delete=models.CASCADE,
+                                     limit_choices_to={'status': 'True'})
+    support_contact = models.ForeignKey(User, on_delete=models.PROTECT, 
+                                      limit_choices_to=limit_users_support_contact)
+    attendees = models.IntegerField(blank=True, null=True)
+    event_date = models.DateTimeField()
+    notes = models.TextField(blank=True, null=True)
+    date_created = models.DateTimeField(auto_now_add=True)
+    date_updated = models.DateTimeField(auto_now=True)
