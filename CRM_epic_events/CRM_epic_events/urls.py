@@ -17,10 +17,11 @@ from django.contrib import admin
 from django.urls import path, include
 from rest_framework import routers
 from rest_framework_nested import routers
-from application.views import LoginView, ClientViewset, ContractViewset
+from application.views import LoginView, ClientViewset, ContractViewset, EventViewset
 
 router = routers.SimpleRouter()
 router.register('clients', ClientViewset, basename='clients')
+router.register('events', EventViewset, basename='events')
 client_router = routers.NestedSimpleRouter(
     router,
     r'clients',
