@@ -16,15 +16,21 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from rest_framework import routers
-from application.views import LoginView, ClientViewset
+from rest_framework_nested import routers
+from application.views import LoginView, ClientViewset, ContractViewset
 
 router = routers.SimpleRouter()
 router.register('clients', ClientViewset, basename='clients')
-
+client_router = routers.NestedSimpleRouter(
+    router,
+    r'clients',
+    lookup='client')
+client_router.register(r'contracts', ContractViewset, basename='contracts')
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', LoginView.as_view(), name='login'),
     path('', include(router.urls)),
+    path('', include(client_router.urls)),
 ]
 

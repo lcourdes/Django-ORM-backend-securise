@@ -1,6 +1,7 @@
-from rest_framework.serializers import ModelSerializer, Serializer
+from rest_framework.serializers import ModelSerializer
 from django.db import transaction
-from application.models import Client
+from django.core.exceptions import ValidationError
+from application.models import Client, Contract
 from django.contrib.auth import authenticate
 from rest_framework import serializers
 
@@ -31,6 +32,7 @@ class LoginSerializer(serializers.Serializer):
             raise serializers.ValidationError(msg, code='authorization')
         attrs['user'] = user
         return attrs
+
 
 class ClientSerializer(ModelSerializer):
     class Meta:
@@ -69,5 +71,52 @@ class ClientDetailSerializer(ModelSerializer):
             instance.phone = validated_data.get('phone')
         if validated_data.get('mobile'):
             instance.mobile = validated_data.get('mobile')
+        instance.save()
+        return instance
+
+
+class ContractSerializer(ModelSerializer):
+    class Meta:
+        model = Contract
+        fields = ['id', 'client', 'status', 'amount', 'payment_due']
+
+
+class ContractDetailSerializer(ModelSerializer):
+    def validate(self, data):
+        status = data['status']
+        amount = data.get('amount')
+        payment_due = data.get('payment_due')
+        if status is False and amount is not None:
+            raise ValidationError("Contract must be signed before fill amount.")
+        if status is False and payment_due is not None:
+            raise ValidationError("Contract must be signed before fill payment_due.")
+        return data
+    
+    class Meta:
+        model = Contract
+        fields = ['id', 'status', 'amount', 'payment_due',
+                   'date_created', 'date_updated']
+
+    @transaction.atomic
+    def create(self, data, *args, **kwargs):
+        sales_contact = self.context.get('request').user
+        client = self.context.get('client')
+        contract = Contract.objects.create(**data, sales_contact=sales_contact,
+                                           client=client)
+        contract.save()
+        return contract
+    
+    @transaction.atomic
+    def update(self, instance, validated_data):
+        if validated_data.get('sales_contact'):
+            instance.sales_contact = validated_data.get('sales_contact')
+        if validated_data.get('client'):
+            instance.client = validated_data.get('client')
+        if validated_data.get('status'):
+            instance.status = validated_data.get('status')
+        if validated_data.get('amount'):
+            instance.amount = validated_data.get('amount')
+        if validated_data.get('payment_due'):
+            instance.payment_due = validated_data.get('payment_due')
         instance.save()
         return instance
