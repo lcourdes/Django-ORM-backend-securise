@@ -44,7 +44,9 @@ class ClientDetailSerializer(ModelSerializer):
     class Meta:
         model = Client
         fields = ['id', 'company_name', 'email', 'is_client', 'first_name',
-                   'last_name', 'phone', 'mobile', 'date_created', 'date_updated']
+                   'last_name', 'phone', 'mobile', 'date_created', 'date_updated',
+                   'sales_contact']
+        read_only_fields = ['sales_contact']
 
     @transaction.atomic
     def create(self, data, *args, **kwargs):
@@ -94,15 +96,13 @@ class ContractDetailSerializer(ModelSerializer):
     
     class Meta:
         model = Contract
-        fields = ['id', 'status', 'amount', 'payment_due',
+        fields = ['id', 'client', 'status', 'amount', 'payment_due',
                    'date_created', 'date_updated']
 
     @transaction.atomic
     def create(self, data, *args, **kwargs):
         sales_contact = self.context.get('request').user
-        client = self.context.get('client')
-        contract = Contract.objects.create(**data, sales_contact=sales_contact,
-                                           client=client)
+        contract = Contract.objects.create(**data, sales_contact=sales_contact)
         contract.save()
         return contract
     

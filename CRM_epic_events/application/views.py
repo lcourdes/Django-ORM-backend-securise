@@ -67,12 +67,7 @@ class ContractViewset(ModelViewSet):
     permission_classes = [DjangoModelPermissions | IsSaler]
     
     def get_queryset(self):
-        client = Client.objects.get(id=self.kwargs.get("client__pk"))
-        if not client.is_client:
-            raise PermissionDenied
-        if not client.sales_contact == self.request.user:
-            raise PermissionDenied
-        queryset = Contract.objects.filter(client=client)
+        queryset = Contract.objects.filter(client__sales_contact=self.request.user)
         return queryset
     
     def get_serializer_class(self):
@@ -82,9 +77,7 @@ class ContractViewset(ModelViewSet):
 
     @transaction.atomic
     def create(self, request, *args, **kwargs):
-        clients = Client.objects.filter(sales_contact=self.request.user)
-        client = get_object_or_404(clients, id=self.kwargs.get("client__pk"))
-        serializer = ContractDetailSerializer(data=request.data, context={'client': client, 'request': request})
+        serializer = ContractDetailSerializer(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
