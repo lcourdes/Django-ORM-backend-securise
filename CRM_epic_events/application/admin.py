@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from application.models import User, Client, Contract
+from application.models import User, Client, Contract, Event
 
 class UserAdministrators(UserAdmin):
     list_display = ('id', 'username', 'last_name', 'first_name', 'email')  
@@ -24,6 +24,11 @@ class ContractAdministrators(admin.ModelAdmin):
     search_fields = ['client__last_name', 'client__email', 'payment_due', 'amount']
 
 
+class EventAdministrators(admin.ModelAdmin):
+    list_display = ('id', 'client', 'support_contact', 'event_date')
+    search_fields = ['client__last_name', 'client__email', 'event_date']
+
 admin.site.register(Client, ClientAdministrators)
 admin.site.register(User, UserAdministrators)
 admin.site.register(Contract, ContractAdministrators)
+admin.site.register(Event, EventAdministrators)
