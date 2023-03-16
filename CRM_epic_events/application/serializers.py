@@ -1,9 +1,10 @@
 from rest_framework.serializers import ModelSerializer
 from django.db import transaction
 from django.core.exceptions import ValidationError
-from application.models import Client, Contract, Event
+from application.models import Client, Contract, Event, User
 from django.contrib.auth import authenticate
 from rest_framework import serializers
+
 
 class LoginSerializer(serializers.Serializer):
     username = serializers.CharField(
@@ -33,6 +34,13 @@ class LoginSerializer(serializers.Serializer):
         attrs['user'] = user
         return attrs
 
+   
+class UserSerializer(ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'email']
+        read_only_fields = ['username', 'email']
+
 
 class ClientSerializer(ModelSerializer):
     class Meta:
@@ -41,12 +49,12 @@ class ClientSerializer(ModelSerializer):
 
 
 class ClientDetailSerializer(ModelSerializer):
+    sales_contact = UserSerializer(read_only=True)
     class Meta:
         model = Client
         fields = ['id', 'company_name', 'email', 'is_client', 'first_name',
                    'last_name', 'phone', 'mobile', 'date_created', 'date_updated',
                    'sales_contact']
-        read_only_fields = ['sales_contact']
 
     @transaction.atomic
     def create(self, data, *args, **kwargs):

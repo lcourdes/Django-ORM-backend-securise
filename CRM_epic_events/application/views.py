@@ -15,6 +15,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from application.models import Client, Contract, Event
 from application.permissions import IsSaler, IsSupport
 
+
 class LoginView(views.APIView):
     serializer_class = LoginSerializer
     permission_classes = [permissions.AllowAny]
@@ -26,15 +27,21 @@ class LoginView(views.APIView):
         login(request, user)
         return redirect('clients/')
 
+
 class ClientViewset(ModelViewSet):
     serializer_class = ClientSerializer
     detail_serializer_class = ClientDetailSerializer
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['last_name', 'email']
-    permission_classes = [DjangoModelPermissions | IsSaler]
+    permission_classes = [DjangoModelPermissions | IsSaler | IsSupport]
     
     def get_queryset(self):
-        queryset = Client.objects.filter(sales_contact=self.request.user)
+        queryset = Client.objects.all()
+        if self.request.user.groups.filter(name='salers').exists():
+            queryset = Client.objects.filter(sales_contact=self.request.user)
+        if self.request.user.groups.filter(name='supporters').exists():
+            events = Event.objects.filter(support_contact=self.request.user)
+            queryset = queryset.filter(id__in=events)
         return queryset
     
     def get_serializer_class(self):
