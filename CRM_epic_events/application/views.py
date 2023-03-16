@@ -78,7 +78,7 @@ class ContractViewset(ModelViewSet):
         return queryset
     
     def get_serializer_class(self):
-        if self.action in ['retrieve', 'create', 'update']:
+        if self.action in ['create', 'update']:
             return self.detail_serializer_class
         return super().get_serializer_class()
 

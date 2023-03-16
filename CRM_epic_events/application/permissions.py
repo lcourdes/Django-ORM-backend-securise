@@ -6,7 +6,7 @@ class IsSaler(BasePermission):
             if view.basename == 'events':
                 if request.method == 'POST':
                     return True
-            if view.basename == 'clients':
+            if view.basename in ['contracts', 'clients']:
                 if request.method == 'PUT':
                     return True
     

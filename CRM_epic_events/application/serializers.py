@@ -1,4 +1,4 @@
-from rest_framework.serializers import ModelSerializer
+from rest_framework.serializers import ModelSerializer, PrimaryKeyRelatedField
 from django.db import transaction
 from django.core.exceptions import ValidationError
 from application.models import Client, Contract, Event, User
@@ -86,9 +86,11 @@ class ClientDetailSerializer(ModelSerializer):
 
 
 class ContractSerializer(ModelSerializer):
+    client = ClientSerializer()
+
     class Meta:
         model = Contract
-        fields = ['id', 'client', 'status', 'amount', 'payment_due']
+        fields = ['id', 'status', 'amount', 'payment_due', 'client']
 
 
 class ContractDetailSerializer(ModelSerializer):
@@ -102,6 +104,10 @@ class ContractDetailSerializer(ModelSerializer):
             raise ValidationError("Contract must be signed before fill payment_due.")
         return data
     
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['client'].queryset = self.fields['client'].queryset.filter(sales_contact_id=self.context['request'].user.id)
+
     class Meta:
         model = Contract
         fields = ['id', 'client', 'status', 'amount', 'payment_due',
