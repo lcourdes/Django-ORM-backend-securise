@@ -4,6 +4,7 @@ from django.core.exceptions import ValidationError
 from application.models import Client, Contract, Event, User
 from django.contrib.auth import authenticate
 from rest_framework import serializers
+from django.utils import timezone
 
 
 class LoginSerializer(serializers.Serializer):
@@ -103,7 +104,9 @@ class ContractDetailSerializer(ModelSerializer):
 
 class ContractCreateSerializer(ModelSerializer):
     def validate(self, data):
-        status = data['status']
+        status = data.get('status')
+        if status is None:
+            status = self.instance.status
         amount = data.get('amount')
         payment_due = data.get('payment_due')
         if status is False and amount is not None:
@@ -169,6 +172,14 @@ class EventCreateSerializer(ModelSerializer):
         fields = ['id', 'event_status', 'support_contact', 'client', 'attendees',
                   'event_date', 'notes']
         read_only_fields = ['client']
+
+    def validate_event_date(self, value):
+        if timezone.now() >= value:
+            if self.context == {}:
+                raise ValidationError('This is a past date. You cannot modified it.')
+            else:
+                raise ValidationError('You gave a past date.')
+        return value
 
     @transaction.atomic
     def create(self, data, *args, **kwargs):

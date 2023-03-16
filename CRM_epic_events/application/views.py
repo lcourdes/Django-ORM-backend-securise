@@ -1,7 +1,7 @@
 from django.db import transaction
 from django.contrib.auth import login
 from django.shortcuts import redirect, get_object_or_404
-from django.core.exceptions import PermissionDenied
+from django.core.exceptions import ValidationError
 from application.serializers import LoginSerializer, ClientDetailSerializer, \
     ClientSerializer, ContractSerializer, ContractDetailSerializer, \
     ContractCreateSerializer, \
@@ -45,7 +45,6 @@ class ClientViewset(ModelViewSet):
             for event in events:
                 client_id = [event.client_id]
             queryset = queryset.filter(id__in=client_id)
-            print(queryset)
         return queryset
     
     def get_serializer_class(self):
