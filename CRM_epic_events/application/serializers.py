@@ -1,9 +1,11 @@
-from rest_framework.serializers import ModelSerializer
+from rest_framework.serializers import ModelSerializer, PrimaryKeyRelatedField
 from django.db import transaction
 from django.core.exceptions import ValidationError
-from application.models import Client, Contract, Event
+from application.models import Client, Contract, Event, User
 from django.contrib.auth import authenticate
 from rest_framework import serializers
+from django.utils import timezone
+
 
 class LoginSerializer(serializers.Serializer):
     username = serializers.CharField(
@@ -33,6 +35,13 @@ class LoginSerializer(serializers.Serializer):
         attrs['user'] = user
         return attrs
 
+   
+class UserSerializer(ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'email']
+        read_only_fields = ['username', 'email']
+
 
 class ClientSerializer(ModelSerializer):
     class Meta:
@@ -41,10 +50,12 @@ class ClientSerializer(ModelSerializer):
 
 
 class ClientDetailSerializer(ModelSerializer):
+    sales_contact = UserSerializer(read_only=True)
     class Meta:
         model = Client
         fields = ['id', 'company_name', 'email', 'is_client', 'first_name',
-                   'last_name', 'phone', 'mobile', 'date_created', 'date_updated']
+                   'last_name', 'phone', 'mobile', 'date_created', 'date_updated',
+                   'sales_contact']
 
     @transaction.atomic
     def create(self, data, *args, **kwargs):
@@ -78,12 +89,24 @@ class ClientDetailSerializer(ModelSerializer):
 class ContractSerializer(ModelSerializer):
     class Meta:
         model = Contract
-        fields = ['id', 'client', 'status', 'amount', 'payment_due']
+        fields = ['id', 'status', 'amount', 'payment_due', 'client']
 
 
 class ContractDetailSerializer(ModelSerializer):
+    client = ClientSerializer()
+    
+    class Meta:
+        model = Contract
+        fields = ['id', 'status', 'amount', 'payment_due', 'client', 
+                  'date_created', 'date_updated']
+
+
+
+class ContractCreateSerializer(ModelSerializer):
     def validate(self, data):
-        status = data['status']
+        status = data.get('status')
+        if status is None:
+            status = self.instance.status
         amount = data.get('amount')
         payment_due = data.get('payment_due')
         if status is False and amount is not None:
@@ -92,17 +115,22 @@ class ContractDetailSerializer(ModelSerializer):
             raise ValidationError("Contract must be signed before fill payment_due.")
         return data
     
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if not self.context == {}:
+            self.fields['client'].queryset = self.fields['client'].queryset.filter(sales_contact_id=self.context['request'].user.id)
+        else:
+            sales_contact_id = Client.objects.get(id=self.initial_data['client']).sales_contact_id
+            self.fields['client'].queryset = self.fields['client'].queryset.filter(sales_contact_id=sales_contact_id)
+
     class Meta:
         model = Contract
-        fields = ['id', 'status', 'amount', 'payment_due',
-                   'date_created', 'date_updated']
+        fields = ['id', 'client', 'status', 'amount', 'payment_due']
 
     @transaction.atomic
     def create(self, data, *args, **kwargs):
         sales_contact = self.context.get('request').user
-        client = self.context.get('client')
-        contract = Contract.objects.create(**data, sales_contact=sales_contact,
-                                           client=client)
+        contract = Contract.objects.create(**data, sales_contact=sales_contact)
         contract.save()
         return contract
     
@@ -125,16 +153,33 @@ class ContractDetailSerializer(ModelSerializer):
 class EventSerializer(ModelSerializer):
     class Meta:
         model = Event
-        fields = ['id', 'client', 'event_status', 'support_contact', 'attendees',
+        fields = ['id', 'event_status', 'support_contact', 'client', 'attendees',
                   'event_date']
 
 
 class EventDetailSerializer(ModelSerializer):
+    support_contact = UserSerializer(read_only=True)
+    client = ClientSerializer(read_only=True)
     class Meta:
         model = Event
+        fields = ['id', 'event_status', 'support_contact', 'client', 'attendees',
+                  'event_date', 'date_created', 'date_updated', 'notes']
+        
+
+class EventCreateSerializer(ModelSerializer):
+    class Meta:
+        model = Event
+        fields = ['id', 'event_status', 'support_contact', 'client', 'attendees',
+                  'event_date', 'notes']
         read_only_fields = ['client']
-        fields = ['id', 'event_status', 'support_contact', 'attendees',
-                  'event_date', 'notes', 'date_created', 'date_updated']
+
+    def validate_event_date(self, value):
+        if timezone.now() >= value:
+            if self.context == {}:
+                raise ValidationError('This is a past date. You cannot modified it.')
+            else:
+                raise ValidationError('You gave a past date.')
+        return value
 
     @transaction.atomic
     def create(self, data, *args, **kwargs):

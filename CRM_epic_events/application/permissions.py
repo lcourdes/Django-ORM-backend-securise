@@ -6,9 +6,12 @@ class IsSaler(BasePermission):
             if view.basename == 'events':
                 if request.method == 'POST':
                     return True
+            if view.basename in ['contracts', 'clients']:
+                if request.method == 'PUT':
+                    return True
     
     def has_object_permission(self, request, view, obj):
-        if view.basename == 'contracts':
+        if view.basename in ['contracts', 'clients']:
             if obj.sales_contact == request.user:
                 return True
         
