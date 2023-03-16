@@ -86,14 +86,22 @@ class ClientDetailSerializer(ModelSerializer):
 
 
 class ContractSerializer(ModelSerializer):
-    client = ClientSerializer()
-
     class Meta:
         model = Contract
         fields = ['id', 'status', 'amount', 'payment_due', 'client']
 
 
 class ContractDetailSerializer(ModelSerializer):
+    client = ClientSerializer()
+    
+    class Meta:
+        model = Contract
+        fields = ['id', 'status', 'amount', 'payment_due', 'client', 
+                  'date_created', 'date_updated']
+
+
+
+class ContractCreateSerializer(ModelSerializer):
     def validate(self, data):
         status = data['status']
         amount = data.get('amount')
@@ -106,12 +114,15 @@ class ContractDetailSerializer(ModelSerializer):
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['client'].queryset = self.fields['client'].queryset.filter(sales_contact_id=self.context['request'].user.id)
+        if not self.context == {}:
+            self.fields['client'].queryset = self.fields['client'].queryset.filter(sales_contact_id=self.context['request'].user.id)
+        else:
+            sales_contact_id = Client.objects.get(id=self.initial_data['client']).sales_contact_id
+            self.fields['client'].queryset = self.fields['client'].queryset.filter(sales_contact_id=sales_contact_id)
 
     class Meta:
         model = Contract
-        fields = ['id', 'client', 'status', 'amount', 'payment_due',
-                   'date_created', 'date_updated']
+        fields = ['id', 'client', 'status', 'amount', 'payment_due']
 
     @transaction.atomic
     def create(self, data, *args, **kwargs):
@@ -139,16 +150,25 @@ class ContractDetailSerializer(ModelSerializer):
 class EventSerializer(ModelSerializer):
     class Meta:
         model = Event
-        fields = ['id', 'client', 'event_status', 'support_contact', 'attendees',
+        fields = ['id', 'event_status', 'support_contact', 'client', 'attendees',
                   'event_date']
 
 
 class EventDetailSerializer(ModelSerializer):
+    support_contact = UserSerializer(read_only=True)
+    client = ClientSerializer(read_only=True)
     class Meta:
         model = Event
+        fields = ['id', 'event_status', 'support_contact', 'client', 'attendees',
+                  'event_date', 'date_created', 'date_updated', 'notes']
+        
+
+class EventCreateSerializer(ModelSerializer):
+    class Meta:
+        model = Event
+        fields = ['id', 'event_status', 'support_contact', 'client', 'attendees',
+                  'event_date', 'notes']
         read_only_fields = ['client']
-        fields = ['id', 'event_status', 'support_contact', 'attendees',
-                  'event_date', 'notes', 'date_created', 'date_updated']
 
     @transaction.atomic
     def create(self, data, *args, **kwargs):
