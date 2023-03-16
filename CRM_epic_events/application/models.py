@@ -8,6 +8,9 @@ class User(AbstractUser):
     first_name = models.CharField(max_length=25)
     last_name = models.CharField(max_length=25)
 
+    def __str__(self):
+        return self.username + ', ' + self.email
+
 def limit_users_sales_contact():
         all_sales_contact = models.Q(groups__name='salers')
         return all_sales_contact
@@ -24,6 +27,9 @@ class Client(models.Model):
     mobile = models.CharField(max_length=20, blank=True, null=True)
     date_created = models.DateTimeField(auto_now_add=True)
     date_updated = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.company_name
 
 class Contract(models.Model):
     client = models.ForeignKey(Client, on_delete=models.CASCADE,
