@@ -16,7 +16,8 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from rest_framework import routers
-from application.views import LoginView, ClientViewset, ContractViewset, EventViewset
+from application.views import ClientViewset, ContractViewset, EventViewset,\
+    LoginView, LogoutView
 
 router = routers.SimpleRouter()
 router.register('clients', ClientViewset, basename='clients')
@@ -26,6 +27,6 @@ router.register('contracts', ContractViewset, basename='contracts')
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', LoginView.as_view(), name='login'),
+    path('logout/', LogoutView.as_view()),
     path('', include(router.urls)),
 ]
-
