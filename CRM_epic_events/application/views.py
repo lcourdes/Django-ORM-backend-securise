@@ -1,7 +1,5 @@
 from django.db import transaction
-from django.contrib.auth import login
-from django.shortcuts import redirect, get_object_or_404
-from django.core.exceptions import ValidationError
+from django.contrib.auth import login, logout
 from application.serializers import LoginSerializer, ClientDetailSerializer, \
     ClientSerializer, ContractSerializer, ContractDetailSerializer, \
     ContractCreateSerializer, \
@@ -20,13 +18,24 @@ from application.permissions import IsSaler, IsSupport
 class LoginView(views.APIView):
     serializer_class = LoginSerializer
     permission_classes = [permissions.AllowAny]
-    def post(self, request, format=None):
+
+    def get(self, request):
+        content = {'message': 'Please Login'}
+        return Response(content)
+    
+    def post(self, request, *args, **kwargs):
         serializer = LoginSerializer(data=self.request.data,
             context={ 'request': self.request })
         serializer.is_valid(raise_exception=True)
         user = serializer.validated_data['user']
         login(request, user)
-        return redirect('clients/')
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class LogoutView(views.APIView):
+    def get(self, request):
+        logout(request)
+        return Response('Logged out successfully.')
 
 
 class ClientViewset(ModelViewSet):

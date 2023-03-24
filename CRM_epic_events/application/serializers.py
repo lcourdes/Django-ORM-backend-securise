@@ -8,10 +8,7 @@ from django.utils import timezone
 
 
 class LoginSerializer(serializers.Serializer):
-    username = serializers.CharField(
-        label="Username",
-        write_only=True
-    )
+    username = serializers.CharField(label="Username")
     password = serializers.CharField(
         label="Password",
         style={'input_type': 'password'},
@@ -101,7 +98,6 @@ class ContractDetailSerializer(ModelSerializer):
                   'date_created', 'date_updated']
 
 
-
 class ContractCreateSerializer(ModelSerializer):
     def validate(self, data):
         status = data.get('status')
@@ -114,15 +110,7 @@ class ContractCreateSerializer(ModelSerializer):
         if status is False and payment_due is not None:
             raise ValidationError("Contract must be signed before fill payment_due.")
         return data
-    
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        if not self.context == {}:
-            self.fields['client'].queryset = self.fields['client'].queryset.filter(sales_contact_id=self.context['request'].user.id)
-        else:
-            sales_contact_id = Client.objects.get(id=self.initial_data['client']).sales_contact_id
-            self.fields['client'].queryset = self.fields['client'].queryset.filter(sales_contact_id=sales_contact_id)
-
+            
     class Meta:
         model = Contract
         fields = ['id', 'client', 'status', 'amount', 'payment_due']
