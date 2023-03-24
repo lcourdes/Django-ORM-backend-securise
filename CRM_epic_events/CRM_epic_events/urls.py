@@ -24,9 +24,13 @@ router.register('clients', ClientViewset, basename='clients')
 router.register('events', EventViewset, basename='events')
 router.register('contracts', ContractViewset, basename='contracts')
 
+def trigger_error(request):
+    division_by_zero = 1 / 0
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', LoginView.as_view(), name='login'),
     path('logout/', LogoutView.as_view()),
     path('', include(router.urls)),
+    path('sentry-debug/', trigger_error),
 ]
