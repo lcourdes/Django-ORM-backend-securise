@@ -1,4 +1,4 @@
-from rest_framework.serializers import ModelSerializer, PrimaryKeyRelatedField
+from rest_framework.serializers import ModelSerializer
 from django.db import transaction
 from django.core.exceptions import ValidationError
 from application.models import Client, Contract, Event, User
@@ -110,6 +110,23 @@ class ContractCreateSerializer(ModelSerializer):
         if status is False and payment_due is not None:
             raise ValidationError("Contract must be signed before fill payment_due.")
         return data
+    
+    def validate_payment_due(self, value):
+        if value is not None:
+            if timezone.now() >= value:
+                raise ValidationError('A problem occurred with the given date.')
+        return value
+    
+    def validate_amount(self, value):
+        if value is not None:
+            if value <= 0:
+                raise ValidationError('A problem occurred with the given amount.')
+        return value
+
+    def validate_client(self, value):
+        if value.sales_contact != self.context.get('request').user:
+            raise ValidationError("You cannot assign a contract to this client.")
+        return value
             
     class Meta:
         model = Contract
@@ -163,12 +180,18 @@ class EventCreateSerializer(ModelSerializer):
 
     def validate_event_date(self, value):
         if timezone.now() >= value:
-            if self.context == {}:
-                raise ValidationError('This is a past date. You cannot modified it.')
-            else:
-                raise ValidationError('You gave a past date.')
+            raise ValidationError('A problem occurred with the given date.')
+        return value 
+    
+    def validate_event_status(self, value):
+        if self.context.get('method') == 'post':
+            if value.sales_contact != self.context.get('user'):
+                raise ValidationError("You cannot assign an event to this contract.")
+        if self.context.get('method') == 'put':
+            if value.sales_contact != self.instance.client.sales_contact:
+                raise ValidationError("You cannot change contract.")
         return value
-
+    
     @transaction.atomic
     def create(self, data, *args, **kwargs):
         contract = Contract.objects.get(id=data.get('event_status').id)

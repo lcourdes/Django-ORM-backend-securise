@@ -10,9 +10,11 @@ from rest_framework import views
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.response import Response
 from rest_framework import status
+from django.core.exceptions import PermissionDenied
 from django_filters.rest_framework import DjangoFilterBackend
 from application.models import Client, Contract, Event
 from application.permissions import IsSaler, IsSupport
+from django.utils import timezone
 
 
 class LoginView(views.APIView):
@@ -99,7 +101,8 @@ class ContractViewset(ModelViewSet):
 
     @transaction.atomic
     def create(self, request, *args, **kwargs):
-        serializer = ContractCreateSerializer(data=request.data, context={'request': request})
+        serializer = ContractCreateSerializer(data=request.data, 
+                                              context={'request': request})
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -108,7 +111,10 @@ class ContractViewset(ModelViewSet):
     def update(self, request, *args, **kwargs):
         partial = True
         instance = self.get_object()
-        serializer = ContractCreateSerializer(instance=instance, data=request.data, partial=partial)
+        serializer = ContractCreateSerializer(instance=instance, 
+                                              data=request.data, 
+                                              partial=partial, 
+                                              context={'request': request})
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -139,7 +145,9 @@ class EventViewset(ModelViewSet):
 
     @transaction.atomic
     def create(self, request):
-        serializer = EventCreateSerializer(data=request.data, context={'request': request})
+        user = request.user
+        serializer = EventCreateSerializer(data=request.data, 
+                                           context={'user': user, 'method': 'post'})
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -148,7 +156,12 @@ class EventViewset(ModelViewSet):
     def update(self, request, *args, **kwargs):
         partial = True
         instance = self.get_object()
-        serializer = EventCreateSerializer(instance=instance, data=request.data, partial=partial)
+        if timezone.now() >= instance.event_date:
+            raise PermissionDenied
+        user = request.user
+        serializer = EventCreateSerializer(instance=instance, data=request.data, 
+                                           partial=partial, 
+                                           context={'user': user, 'method': 'put'})
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
         return Response(serializer.data, status=status.HTTP_200_OK)
